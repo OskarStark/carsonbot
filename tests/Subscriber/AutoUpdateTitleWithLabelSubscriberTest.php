@@ -294,4 +294,150 @@ class AutoUpdateTitleWithLabelSubscriberTest extends TestCase
         $this->assertSame(1234, $responseData['pull_request']);
         $this->assertSame('[Console][FrameworkBundle][TODO][WIP][Foo] Some title', $responseData['new_title']);
     }
+
+    public function testAiBundleReplacementForSymfonyAiRepository()
+    {
+        $repository = new Repository('symfony', 'ai', null);
+        $event = new GitHubEvent(['action' => 'labeled', 'number' => 1234, 'pull_request' => []], $repository);
+        $this->pullRequestApi->method('show')->willReturn([
+            'title' => '[AiBundle] Fix something',
+            'labels' => [
+                ['name' => 'AI Bundle', 'color' => 'dddddd'],
+            ],
+        ]);
+
+        $this->dispatcher->dispatch($event, GitHubEvents::PULL_REQUEST);
+        $responseData = $event->getResponseData();
+
+        $this->assertCount(2, $responseData);
+        $this->assertSame(1234, $responseData['pull_request']);
+        $this->assertSame('[AI Bundle] Fix something', $responseData['new_title']);
+    }
+
+    public function testAiBundleCaseInsensitiveReplacementForSymfonyAiRepository()
+    {
+        $repository = new Repository('symfony', 'ai', null);
+        $event = new GitHubEvent(['action' => 'labeled', 'number' => 1234, 'pull_request' => []], $repository);
+        $this->pullRequestApi->method('show')->willReturn([
+            'title' => '[aibundle] Fix something',
+            'labels' => [
+                ['name' => 'AI Bundle', 'color' => 'dddddd'],
+            ],
+        ]);
+
+        $this->dispatcher->dispatch($event, GitHubEvents::PULL_REQUEST);
+        $responseData = $event->getResponseData();
+
+        $this->assertCount(2, $responseData);
+        $this->assertSame(1234, $responseData['pull_request']);
+        $this->assertSame('[AI Bundle] Fix something', $responseData['new_title']);
+    }
+
+    public function testAiBundleNotReplacedForOtherRepositories()
+    {
+        $event = new GitHubEvent(['action' => 'labeled', 'number' => 1234, 'pull_request' => []], $this->repository);
+        $this->pullRequestApi->method('show')->willReturn([
+            'title' => '[AiBundle] Fix something',
+            'labels' => [
+                ['name' => 'AiBundle', 'color' => 'dddddd'],
+            ],
+        ]);
+
+        $this->dispatcher->dispatch($event, GitHubEvents::PULL_REQUEST);
+        $responseData = $event->getResponseData();
+
+        // No change expected, so response should be empty
+        $this->assertEmpty($responseData);
+    }
+
+    public function testAiBundleWithSpaceReplacementForSymfonyAiRepository()
+    {
+        $repository = new Repository('symfony', 'ai', null);
+        $event = new GitHubEvent(['action' => 'labeled', 'number' => 1234, 'pull_request' => []], $repository);
+        $this->pullRequestApi->method('show')->willReturn([
+            'title' => '[Ai Bundle] Fix something',
+            'labels' => [
+                ['name' => 'AI Bundle', 'color' => 'dddddd'],
+            ],
+        ]);
+
+        $this->dispatcher->dispatch($event, GitHubEvents::PULL_REQUEST);
+        $responseData = $event->getResponseData();
+
+        $this->assertCount(2, $responseData);
+        $this->assertSame(1234, $responseData['pull_request']);
+        $this->assertSame('[AI Bundle] Fix something', $responseData['new_title']);
+    }
+
+    public function testAiBundleNormalizationWithoutLabelForSymfonyAiRepository()
+    {
+        // Test normalizing [AiBundle] to [AI Bundle] when NO label is present
+        $repository = new Repository('symfony', 'ai', null);
+        $event = new GitHubEvent(['action' => 'labeled', 'number' => 1234, 'pull_request' => []], $repository);
+        $this->pullRequestApi->method('show')->willReturn([
+            'title' => '[AiBundle] Fix something',
+            'labels' => [], // No labels at all
+        ]);
+
+        $this->dispatcher->dispatch($event, GitHubEvents::PULL_REQUEST);
+        $responseData = $event->getResponseData();
+
+        $this->assertCount(2, $responseData);
+        $this->assertSame(1234, $responseData['pull_request']);
+        $this->assertSame('[AI Bundle] Fix something', $responseData['new_title']);
+    }
+
+    public function testAiBundleWithSpaceNormalizationWithoutLabelForSymfonyAiRepository()
+    {
+        // Test normalizing [Ai Bundle] to [AI Bundle] when NO label is present
+        $repository = new Repository('symfony', 'ai', null);
+        $event = new GitHubEvent(['action' => 'labeled', 'number' => 1234, 'pull_request' => []], $repository);
+        $this->pullRequestApi->method('show')->willReturn([
+            'title' => '[Ai Bundle] Fix something',
+            'labels' => [], // No labels at all
+        ]);
+
+        $this->dispatcher->dispatch($event, GitHubEvents::PULL_REQUEST);
+        $responseData = $event->getResponseData();
+
+        $this->assertCount(2, $responseData);
+        $this->assertSame(1234, $responseData['pull_request']);
+        $this->assertSame('[AI Bundle] Fix something', $responseData['new_title']);
+    }
+
+    public function testAiBundleMixedCaseNormalizationWithoutLabelForSymfonyAiRepository()
+    {
+        // Test normalizing [ai bundle] to [AI Bundle] when NO label is present
+        $repository = new Repository('symfony', 'ai', null);
+        $event = new GitHubEvent(['action' => 'labeled', 'number' => 1234, 'pull_request' => []], $repository);
+        $this->pullRequestApi->method('show')->willReturn([
+            'title' => '[ai bundle] Fix something',
+            'labels' => [], // No labels at all
+        ]);
+
+        $this->dispatcher->dispatch($event, GitHubEvents::PULL_REQUEST);
+        $responseData = $event->getResponseData();
+
+        $this->assertCount(2, $responseData);
+        $this->assertSame(1234, $responseData['pull_request']);
+        $this->assertSame('[AI Bundle] Fix something', $responseData['new_title']);
+    }
+
+    public function testAiBundleNormalizationWithOtherUnrecognizedBrackets()
+    {
+        // Test normalizing [AiBundle] along with other unrecognized brackets
+        $repository = new Repository('symfony', 'ai', null);
+        $event = new GitHubEvent(['action' => 'labeled', 'number' => 1234, 'pull_request' => []], $repository);
+        $this->pullRequestApi->method('show')->willReturn([
+            'title' => '[AiBundle] [WIP] Fix something',
+            'labels' => [], // No labels at all
+        ]);
+
+        $this->dispatcher->dispatch($event, GitHubEvents::PULL_REQUEST);
+        $responseData = $event->getResponseData();
+
+        $this->assertCount(2, $responseData);
+        $this->assertSame(1234, $responseData['pull_request']);
+        $this->assertSame('[AI Bundle][WIP] Fix something', $responseData['new_title']);
+    }
 }

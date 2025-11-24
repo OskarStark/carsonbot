@@ -47,6 +47,11 @@ class LabelNameExtractor
             foreach ($matches['labels'] as $label) {
                 $label = $this->fixLabelName($label);
 
+                // Special handling for symfony/ai: normalize AiBundle and Ai Bundle to AI Bundle
+                if ('symfony/ai' === $repository->getFullName() && preg_match('/^ai\s*bundle$/i', $label)) {
+                    $label = 'AI Bundle';
+                }
+
                 // check case-insensitively, but then apply the correctly-cased label
                 if (isset($validLabels[strtolower($label)])) {
                     $labels[] = $validLabels[strtolower($label)];
@@ -62,12 +67,18 @@ class LabelNameExtractor
     /**
      * @return \Generator<string>
      */
-    public function getAliasesForLabel(string $label): \Generator
+    public function getAliasesForLabel(string $label, ?Repository $repository = null): \Generator
     {
         foreach (self::LABEL_ALIASES as $alias => $name) {
             if ($name === $label) {
                 yield $alias;
             }
+        }
+
+        // Special handling for symfony/ai: AiBundle and Ai Bundle are aliases for AI Bundle
+        if ($repository && 'symfony/ai' === $repository->getFullName() && 'AI Bundle' === $label) {
+            yield 'AiBundle';
+            yield 'Ai Bundle';
         }
     }
 

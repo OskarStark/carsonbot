@@ -41,6 +41,11 @@ class StaticLabelApi extends NullLabelApi
         $labels[] = 'DX';
         $labels[] = 'Deprecation';
 
+        // Special labels for symfony/ai repository
+        if ('symfony/ai' === $repository->getFullName()) {
+            $labels[] = 'AI Bundle';
+        }
+
         return $labels;
     }
 

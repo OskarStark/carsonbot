@@ -55,15 +55,18 @@ class AutoUpdateTitleWithLabelSubscriber implements EventSubscriberInterface
                 $prTitle = str_ireplace('['.$label['name'].']', '', $prTitle);
 
                 // Remove label aliases from title
-                foreach ($this->labelExtractor->getAliasesForLabel($label['name']) as $alias) {
+                foreach ($this->labelExtractor->getAliasesForLabel($label['name'], $repository) as $alias) {
                     $prTitle = str_ireplace('['.$alias.']', '', $prTitle);
                 }
             }
         }
 
-        // Remove any other labels in the title.
-        foreach ($this->labelExtractor->extractLabels($prTitle, $repository) as $label) {
-            $prTitle = str_ireplace('['.$label.']', '', $prTitle);
+        // Only remove recognized labels from title if there are actual labels on the PR
+        // This prevents removing valid label names when NO labels are present
+        if (!empty($validLabels)) {
+            foreach ($this->labelExtractor->extractLabels($prTitle, $repository) as $label) {
+                $prTitle = str_ireplace('['.$label.']', '', $prTitle);
+            }
         }
 
         sort($validLabels);
@@ -81,7 +84,14 @@ class AutoUpdateTitleWithLabelSubscriber implements EventSubscriberInterface
 
         // Match all consecutive bracketed items at the start of the title
         while (preg_match('/^\[([^]]+)]\s*/', $remainingTitle, $matches)) {
-            $leadingBrackets .= '['.$matches[1].']';
+            $bracketContent = $matches[1];
+
+            // Special handling for symfony/ai: normalize AiBundle and Ai Bundle to AI Bundle
+            if ('symfony/ai' === $repository->getFullName() && preg_match('/^ai\s*bundle$/i', $bracketContent)) {
+                $bracketContent = 'AI Bundle';
+            }
+
+            $leadingBrackets .= '['.$bracketContent.']';
             $remainingTitle = substr($remainingTitle, strlen($matches[0]));
         }
 
