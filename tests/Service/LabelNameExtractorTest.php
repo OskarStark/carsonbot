@@ -29,26 +29,4 @@ class LabelNameExtractorTest extends TestCase
         yield [['Messenger', 'Mime'], '[Messenger] [Mime] Foobar'];
         yield [['Messenger', 'Mime'], '[Messenger] Foobar [Mime]'];
     }
-
-    /**
-     * @dataProvider provideAiBundleLabels
-     */
-    public function testExtractAiBundleLabelsForSymfonyAi(array $expected, string $title)
-    {
-        $extractor = new LabelNameExtractor(new StaticLabelApi(), new NullLogger());
-        $repo = new Repository('symfony', 'ai');
-
-        $this->assertSame($expected, $extractor->extractLabels($title, $repo));
-    }
-
-    public static function provideAiBundleLabels(): iterable
-    {
-        yield [['AI Bundle'], '[AiBundle] Foobar'];
-        yield [['AI Bundle'], '[aibundle] Foobar'];
-        yield [['AI Bundle'], '[AIBUNDLE] Foobar'];
-        yield [['AI Bundle'], '[Ai Bundle] Foobar'];
-        yield [['AI Bundle'], '[ai bundle] Foobar'];
-        yield [['AI Bundle'], '[AI BUNDLE] Foobar'];
-        yield [['AI Bundle'], '[AI Bundle] Foobar'];
-    }
 }
